@@ -1,0 +1,12 @@
+[
+  {
+    "event_id": "018e69f8-8f8e-7e9b-b0b2-2e63a8a3a912",
+    "timestamp_ns": 1700000000000000000,
+    "category": "process",
+    "severity": "info",
+    "pid": 1042,
+    "process_name": "node.exe",
+    "summary": "Process node.exe spawned",
+    "payload_json": "{\"pid\":1042,\"name\":\"node.exe\"}"
+  }
+]

@@ -1,0 +1,5 @@
+﻿# AppTrace Release SHA-256 Checksums
+# Generated on: 2026-11-21 11:58:29
+
+f511a673bf0b3bc0d3cae1094fb05ee2d31e7c1e05da70064fe4cac88ef22cd9 *portable/AppTrace/AppTrace.exe
+e35ff28dbfc926fcbcf836fde3e13415c8537be2c3f9bc19f32ed7df2df246cb *AppTrace-Windows-x64-Portable.zip
