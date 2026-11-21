@@ -106,6 +106,7 @@ pub fn run() {
             commands::get_largest_files,
             commands::scan_duplicate_files,
             commands::delete_duplicate_files,
+            commands::delete_duplicate_candidates,
             commands::get_optimization_recommendations,
             commands::execute_optimization_action,
             commands::get_system_health_report,

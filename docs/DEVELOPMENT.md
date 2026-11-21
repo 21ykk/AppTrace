@@ -1,25 +1,7 @@
-# AppTrace Developer Guide
+# AppTrace Developer Guides
 
-## Prerequisites
-- Node.js >= 20.0 and npm
-- Rust toolchain (cargo, rustc >= 1.85)
-- Windows: Visual Studio C++ Build Tools & WebView2
-- Linux: `libwebkit2gtk-4.1-dev`, `libssl-dev`, `build-essential`
+The developer and build documentation has been updated and organized:
 
-## Local Development Commands
-```bash
-# Install frontend dependencies
-npm install
-
-# Run frontend test build
-npm run build
-
-# Run type check
-npx tsc --noEmit
-
-# Check Rust backend
-cargo check --manifest-path src-tauri/Cargo.toml
-
-# Launch desktop development application
-npm run dev
-```
+- **Building from Source:** See [docs/development/BUILDING.md](development/BUILDING.md) for prerequisites, toolchain setup, build commands, and release packaging.
+- **Contributing:** See [docs/development/CONTRIBUTING.md](development/CONTRIBUTING.md) for coding standards, safety rules, and verification requirements.
+- **Architecture:** See [docs/ARCHITECTURE.md](ARCHITECTURE.md) for deep technical engine design.

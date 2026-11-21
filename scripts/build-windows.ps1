@@ -46,4 +46,3 @@ Write-Host "[5/5] Running Portable Smoke Verification..." -ForegroundColor Yello
 Write-Host "==========================================" -ForegroundColor Green
 Write-Host "  AppTrace Build Verification PASSED!    " -ForegroundColor Green
 Write-Host "==========================================" -ForegroundColor Green
-

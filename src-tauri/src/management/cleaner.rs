@@ -238,6 +238,13 @@ pub fn execute_cleaning(category_ids: Vec<String>) -> Result<(u64, usize), Strin
                 {
                     v.push(PathBuf::from(r"C:\Windows\Temp"));
                 }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let var_tmp = PathBuf::from("/var/tmp");
+                    if var_tmp.exists() {
+                        v.push(var_tmp);
+                    }
+                }
                 v
             }
             "crash_dumps" => {
@@ -248,6 +255,19 @@ pub fn execute_cleaning(category_ids: Vec<String>) -> Result<(u64, usize), Strin
                         v.push(PathBuf::from(l).join("CrashDumps"));
                     }
                     v.push(PathBuf::from(r"C:\Windows\Minidump"));
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let var_crash = PathBuf::from("/var/crash");
+                    if var_crash.exists() {
+                        v.push(var_crash);
+                    }
+                    if let Some(h) = dirs::home_dir() {
+                        let user_crash = h.join(".cache/crash");
+                        if user_crash.exists() {
+                            v.push(user_crash);
+                        }
+                    }
                 }
                 v
             }
@@ -262,6 +282,23 @@ pub fn execute_cleaning(category_ids: Vec<String>) -> Result<(u64, usize), Strin
                         v.push(p.join(r"BraveSoftware\Brave-Browser\User Data\Default\Cache"));
                     }
                 }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    if let Some(h) = dirs::home_dir() {
+                        let chrome = h.join(".cache/google-chrome");
+                        if chrome.exists() {
+                            v.push(chrome);
+                        }
+                        let chromium = h.join(".cache/chromium");
+                        if chromium.exists() {
+                            v.push(chromium);
+                        }
+                        let mozilla = h.join(".cache/mozilla/firefox");
+                        if mozilla.exists() {
+                            v.push(mozilla);
+                        }
+                    }
+                }
                 v
             }
             "system_logs" => {
@@ -269,6 +306,13 @@ pub fn execute_cleaning(category_ids: Vec<String>) -> Result<(u64, usize), Strin
                 #[cfg(target_os = "windows")]
                 {
                     v.push(PathBuf::from(r"C:\Windows\Logs\CBS"));
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let logs = PathBuf::from("/var/log");
+                    if logs.exists() {
+                        v.push(logs);
+                    }
                 }
                 v
             }
@@ -281,18 +325,21 @@ pub fn execute_cleaning(category_ids: Vec<String>) -> Result<(u64, usize), Strin
                 if let Ok(entries) = std::fs::read_dir(&base_dir) {
                     for entry in entries.flatten() {
                         let path = entry.path();
-                        if let Ok(meta) = entry.metadata() {
-                            let size = if meta.is_file() {
-                                meta.len()
-                            } else {
-                                0
-                            };
-                            if meta.is_file() {
+                        if let Ok(ft) = entry.file_type() {
+                            if ft.is_symlink() {
+                                // Safely unlink symlink without following or recursing
+                                let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
                                 if std::fs::remove_file(&path).is_ok() {
                                     total_reclaimed += size;
                                     files_deleted += 1;
                                 }
-                            } else if meta.is_dir() {
+                            } else if ft.is_file() {
+                                let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+                                if std::fs::remove_file(&path).is_ok() {
+                                    total_reclaimed += size;
+                                    files_deleted += 1;
+                                }
+                            } else if ft.is_dir() {
                                 let dir_sz = get_dir_size_recursive(&path);
                                 if std::fs::remove_dir_all(&path).is_ok() {
                                     total_reclaimed += dir_sz;
@@ -313,10 +360,15 @@ fn get_dir_size_recursive(path: &Path) -> u64 {
     let mut total = 0;
     if let Ok(entries) = std::fs::read_dir(path) {
         for entry in entries.flatten() {
-            if let Ok(m) = entry.metadata() {
-                if m.is_file() {
-                    total += m.len();
-                } else if m.is_dir() {
+            if let Ok(ft) = entry.file_type() {
+                if ft.is_symlink() {
+                    continue; // Skip symlinks to avoid infinite loops and traversal escapes
+                }
+                if ft.is_file() {
+                    if let Ok(m) = entry.metadata() {
+                        total += m.len();
+                    }
+                } else if ft.is_dir() {
                     total += get_dir_size_recursive(&entry.path());
                 }
             }

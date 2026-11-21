@@ -197,4 +197,6 @@ pub struct SystemDiagnostics {
     pub app_memory_rss_bytes: u64,
     pub active_threads_count: u32,
     pub uptime_seconds: u64,
+    #[serde(default)]
+    pub persistence_failures_count: u64,
 }

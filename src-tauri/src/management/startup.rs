@@ -283,8 +283,104 @@ impl StartupManager {
 
         #[cfg(not(target_os = "windows"))]
         {
-            // Linux desktop file toggle
-            Ok(())
+            let parts: Vec<&str> = entry_id.splitn(2, '-').collect();
+            if parts.len() < 2 {
+                return Err("Invalid startup entry identifier".to_string());
+            }
+
+            let loc = parts[0];
+            let target_name = parts[1];
+
+            let home = dirs::home_dir().ok_or_else(|| "Failed to resolve user home directory".to_string())?;
+            let user_autostart_dir = home.join(".config/autostart");
+            let _ = std::fs::create_dir_all(&user_autostart_dir);
+
+            if loc == "XDG_Autostart" {
+                // Find matching file in user autostart directory
+                let mut matched_path = None;
+                if let Ok(entries) = std::fs::read_dir(&user_autostart_dir) {
+                    for entry in entries.flatten() {
+                        let p = entry.path();
+                        if p.extension().map(|e| e == "desktop").unwrap_or(false) {
+                            if let Ok(content) = std::fs::read_to_string(&p) {
+                                let mut name = p.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                                for line in content.lines() {
+                                    if line.starts_with("Name=") {
+                                        name = line.trim_start_matches("Name=").trim().to_string();
+                                        break;
+                                    }
+                                }
+                                if name == target_name {
+                                    matched_path = Some(p);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let target_file = matched_path.ok_or_else(|| format!("Desktop autostart file for '{}' not found", target_name))?;
+                let mut content = std::fs::read_to_string(&target_file).map_err(|e| e.to_string())?;
+
+                if enable {
+                    content = content.replace("Hidden=true", "Hidden=false")
+                        .replace("X-GNOME-Autostart-enabled=false", "X-GNOME-Autostart-enabled=true");
+                } else {
+                    if content.contains("Hidden=false") {
+                        content = content.replace("Hidden=false", "Hidden=true");
+                    } else if !content.contains("Hidden=true") {
+                        content.push_str("\nHidden=true\n");
+                    }
+                    if content.contains("X-GNOME-Autostart-enabled=true") {
+                        content = content.replace("X-GNOME-Autostart-enabled=true", "X-GNOME-Autostart-enabled=false");
+                    } else if !content.contains("X-GNOME-Autostart-enabled=false") {
+                        content.push_str("X-GNOME-Autostart-enabled=false\n");
+                    }
+                }
+
+                std::fs::write(&target_file, content).map_err(|e| format!("Failed to update autostart file: {}", e))?;
+                Ok(())
+            } else if loc == "XDG_Autostart_System" {
+                // System-wide XDG autostart entry: override per freedesktop.org spec by creating user desktop entry
+                let system_dir = std::path::PathBuf::from("/etc/xdg/autostart");
+                let mut system_file = None;
+                if let Ok(entries) = std::fs::read_dir(&system_dir) {
+                    for entry in entries.flatten() {
+                        let p = entry.path();
+                        if p.extension().map(|e| e == "desktop").unwrap_or(false) {
+                            if let Ok(content) = std::fs::read_to_string(&p) {
+                                let mut name = p.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                                for line in content.lines() {
+                                    if line.starts_with("Name=") {
+                                        name = line.trim_start_matches("Name=").trim().to_string();
+                                        break;
+                                    }
+                                }
+                                if name == target_name {
+                                    system_file = Some((p.clone(), p.file_name().unwrap().to_os_string()));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let (src_path, file_name) = system_file.ok_or_else(|| format!("System autostart entry '{}' not found", target_name))?;
+                let override_dest = user_autostart_dir.join(file_name);
+
+                if !enable {
+                    // Copy to user autostart with Hidden=true to suppress system entry
+                    let mut content = std::fs::read_to_string(&src_path).map_err(|e| e.to_string())?;
+                    content.push_str("\nHidden=true\nX-GNOME-Autostart-enabled=false\n");
+                    std::fs::write(&override_dest, content).map_err(|e| format!("Failed to create user override: {}", e))?;
+                } else if override_dest.exists() {
+                    // Re-enabling: remove suppressing user override
+                    let _ = std::fs::remove_file(override_dest);
+                }
+                Ok(())
+            } else {
+                Err(format!("Unsupported startup location: {}", loc))
+            }
         }
     }
 }

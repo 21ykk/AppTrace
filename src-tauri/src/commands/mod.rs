@@ -257,6 +257,7 @@ pub fn purge_retention_data(
         .map_err(|e| e.to_string())
 }
 
+
 #[tauri::command]
 pub fn terminate_process(pid: u32) -> Result<(), String> {
     if pid <= 4 {
@@ -340,13 +341,32 @@ pub fn execute_uninstall_plan(
     force_kill_processes: bool,
     run_original_uninstaller: bool,
     remove_leftovers: bool,
+    state: State<'_, AppState>,
 ) -> Result<String, String> {
-    crate::management::uninstall::execute_uninstall_plan(
+    let res = crate::management::uninstall::execute_uninstall_plan(
         &app_id,
         force_kill_processes,
         run_original_uninstaller,
         remove_leftovers,
-    )
+    );
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos() as u64;
+    let op = crate::management::models::OperationHistoryEntry {
+        operation_id: format!("op-uninst-{}", uuid::Uuid::now_v7()),
+        timestamp_ns: now,
+        action_type: "UninstallApp".to_string(),
+        target_name: app_id,
+        target_path: None,
+        status: if res.is_ok() { "Success".to_string() } else { "Failed".to_string() },
+        details_json: format!(r#"{{"force_kill":{},"run_uninstaller":{},"remove_leftovers":{}}}"#, force_kill_processes, run_original_uninstaller, remove_leftovers),
+        error_message: res.as_ref().err().cloned(),
+    };
+    if let Err(e) = state.db.record_operation(&op) {
+        eprintln!(
+            "[AppTrace Diagnostics] Operation history persistence failure for {}: {}",
+            op.operation_id, e
+        );
+    }
+    res
 }
 
 #[tauri::command]
@@ -355,8 +375,34 @@ pub fn scan_app_leftovers(app_id: String) -> Result<Vec<LeftoverItem>, String> {
 }
 
 #[tauri::command]
-pub fn delete_leftovers(items: Vec<LeftoverItem>) -> Result<(u64, usize), String> {
-    crate::management::uninstall::delete_leftovers(items)
+pub fn delete_leftovers(items: Vec<LeftoverItem>, state: State<'_, AppState>) -> Result<(u64, usize), String> {
+    let selected_count = items.iter().filter(|i| i.selected).count();
+    let res = crate::management::uninstall::delete_leftovers(items);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos() as u64;
+    let (bytes, deleted) = res.as_ref().copied().unwrap_or((0, 0));
+    let status = match &res {
+        Ok(_) if selected_count > 0 && deleted == 0 => "Failed".to_string(),
+        Ok(_) if selected_count > 0 && deleted < selected_count => "PartialSuccess".to_string(),
+        Ok(_) => "Success".to_string(),
+        Err(_) => "Failed".to_string(),
+    };
+    let op = crate::management::models::OperationHistoryEntry {
+        operation_id: format!("op-leftover-{}", uuid::Uuid::now_v7()),
+        timestamp_ns: now,
+        action_type: "DeleteLeftovers".to_string(),
+        target_name: format!("{} leftover items", selected_count),
+        target_path: None,
+        status,
+        details_json: format!(r#"{{"bytes_reclaimed":{},"files_deleted":{},"items_requested":{}}}"#, bytes, deleted, selected_count),
+        error_message: res.as_ref().err().cloned(),
+    };
+    if let Err(e) = state.db.record_operation(&op) {
+        eprintln!(
+            "[AppTrace Diagnostics] Operation history persistence failure for {}: {}",
+            op.operation_id, e
+        );
+    }
+    res
 }
 
 #[tauri::command]
@@ -365,8 +411,26 @@ pub fn get_startup_entries() -> Result<Vec<StartupEntry>, String> {
 }
 
 #[tauri::command]
-pub fn set_startup_entry_enabled(entry_id: String, enabled: bool) -> Result<(), String> {
-    crate::management::startup::set_startup_entry_enabled(&entry_id, enabled)
+pub fn set_startup_entry_enabled(entry_id: String, enabled: bool, state: State<'_, AppState>) -> Result<(), String> {
+    let res = crate::management::startup::set_startup_entry_enabled(&entry_id, enabled);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos() as u64;
+    let op = crate::management::models::OperationHistoryEntry {
+        operation_id: format!("op-startup-{}", uuid::Uuid::now_v7()),
+        timestamp_ns: now,
+        action_type: if enabled { "EnableStartup".to_string() } else { "DisableStartup".to_string() },
+        target_name: entry_id,
+        target_path: None,
+        status: if res.is_ok() { "Success".to_string() } else { "Failed".to_string() },
+        details_json: format!(r#"{{"enabled":{}}}"#, enabled),
+        error_message: res.as_ref().err().cloned(),
+    };
+    if let Err(e) = state.db.record_operation(&op) {
+        eprintln!(
+            "[AppTrace Diagnostics] Operation history persistence failure for {}: {}",
+            op.operation_id, e
+        );
+    }
+    res
 }
 
 #[tauri::command]
@@ -375,13 +439,49 @@ pub fn get_system_services() -> Result<Vec<ServiceInfo>, String> {
 }
 
 #[tauri::command]
-pub fn start_system_service(service_name: String) -> Result<(), String> {
-    crate::management::services::start_system_service(&service_name)
+pub fn start_system_service(service_name: String, state: State<'_, AppState>) -> Result<(), String> {
+    let res = crate::management::services::start_system_service(&service_name);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos() as u64;
+    let op = crate::management::models::OperationHistoryEntry {
+        operation_id: format!("op-svcstart-{}", uuid::Uuid::now_v7()),
+        timestamp_ns: now,
+        action_type: "StartService".to_string(),
+        target_name: service_name,
+        target_path: None,
+        status: if res.is_ok() { "Success".to_string() } else { "Failed".to_string() },
+        details_json: "{}".to_string(),
+        error_message: res.as_ref().err().cloned(),
+    };
+    if let Err(e) = state.db.record_operation(&op) {
+        eprintln!(
+            "[AppTrace Diagnostics] Operation history persistence failure for {}: {}",
+            op.operation_id, e
+        );
+    }
+    res
 }
 
 #[tauri::command]
-pub fn stop_system_service(service_name: String) -> Result<(), String> {
-    crate::management::services::stop_system_service(&service_name)
+pub fn stop_system_service(service_name: String, state: State<'_, AppState>) -> Result<(), String> {
+    let res = crate::management::services::stop_system_service(&service_name);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos() as u64;
+    let op = crate::management::models::OperationHistoryEntry {
+        operation_id: format!("op-svcstop-{}", uuid::Uuid::now_v7()),
+        timestamp_ns: now,
+        action_type: "StopService".to_string(),
+        target_name: service_name,
+        target_path: None,
+        status: if res.is_ok() { "Success".to_string() } else { "Failed".to_string() },
+        details_json: "{}".to_string(),
+        error_message: res.as_ref().err().cloned(),
+    };
+    if let Err(e) = state.db.record_operation(&op) {
+        eprintln!(
+            "[AppTrace Diagnostics] Operation history persistence failure for {}: {}",
+            op.operation_id, e
+        );
+    }
+    res
 }
 
 #[tauri::command]
@@ -415,8 +515,26 @@ pub fn set_registry_value(key_path: String, value_name: String, value_data: Stri
 }
 
 #[tauri::command]
-pub fn delete_registry_item(key_path: String, value_name: Option<String>) -> Result<(), String> {
-    crate::management::registry::delete_registry_value_or_key(&key_path, value_name.as_deref())
+pub fn delete_registry_item(key_path: String, value_name: Option<String>, state: State<'_, AppState>) -> Result<(), String> {
+    let res = crate::management::registry::delete_registry_value_or_key(&key_path, value_name.as_deref());
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos() as u64;
+    let op = crate::management::models::OperationHistoryEntry {
+        operation_id: format!("op-regdel-{}", uuid::Uuid::now_v7()),
+        timestamp_ns: now,
+        action_type: "DeleteRegistryOrConfig".to_string(),
+        target_name: key_path.clone(),
+        target_path: Some(key_path),
+        status: if res.is_ok() { "Success".to_string() } else { "Failed".to_string() },
+        details_json: format!(r#"{{"value_name":{:?}}}"#, value_name),
+        error_message: res.as_ref().err().cloned(),
+    };
+    if let Err(e) = state.db.record_operation(&op) {
+        eprintln!(
+            "[AppTrace Diagnostics] Operation history persistence failure for {}: {}",
+            op.operation_id, e
+        );
+    }
+    res
 }
 
 #[tauri::command]
@@ -425,8 +543,28 @@ pub fn scan_cleanable_categories() -> Result<Vec<CleanableCategory>, String> {
 }
 
 #[tauri::command]
-pub fn execute_cleaning(category_ids: Vec<String>) -> Result<(u64, usize), String> {
-    crate::management::cleaner::execute_cleaning(category_ids)
+pub fn execute_cleaning(category_ids: Vec<String>, state: State<'_, AppState>) -> Result<(u64, usize), String> {
+    let cat_count = category_ids.len();
+    let res = crate::management::cleaner::execute_cleaning(category_ids);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos() as u64;
+    let (bytes, files) = res.as_ref().copied().unwrap_or((0, 0));
+    let op = crate::management::models::OperationHistoryEntry {
+        operation_id: format!("op-clean-{}", uuid::Uuid::now_v7()),
+        timestamp_ns: now,
+        action_type: "SystemClean".to_string(),
+        target_name: format!("{} cleanable categories", cat_count),
+        target_path: None,
+        status: if res.is_ok() { "Success".to_string() } else { "Failed".to_string() },
+        details_json: format!(r#"{{"bytes_reclaimed":{},"files_deleted":{}}}"#, bytes, files),
+        error_message: res.as_ref().err().cloned(),
+    };
+    if let Err(e) = state.db.record_operation(&op) {
+        eprintln!(
+            "[AppTrace Diagnostics] Operation history persistence failure for {}: {}",
+            op.operation_id, e
+        );
+    }
+    res
 }
 
 #[tauri::command]
@@ -445,8 +583,68 @@ pub fn scan_duplicate_files(target_path: String, min_size_bytes: Option<u64>) ->
 }
 
 #[tauri::command]
-pub fn delete_duplicate_files(file_paths: Vec<String>) -> Result<(u64, usize), String> {
-    crate::management::duplicates::delete_duplicate_files(file_paths)
+pub fn delete_duplicate_files(file_paths: Vec<String>, state: State<'_, AppState>) -> Result<(u64, usize), String> {
+    let count = file_paths.len();
+    let res = crate::management::duplicates::delete_duplicate_files(file_paths);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos() as u64;
+    let (bytes, files) = res.as_ref().copied().unwrap_or((0, 0));
+    let status = match &res {
+        Ok(_) if count > 0 && files == 0 => "Failed".to_string(),
+        Ok(_) if count > 0 && files < count => "PartialSuccess".to_string(),
+        Ok(_) => "Success".to_string(),
+        Err(_) => "Failed".to_string(),
+    };
+    let op = crate::management::models::OperationHistoryEntry {
+        operation_id: format!("op-dupdel-{}", uuid::Uuid::now_v7()),
+        timestamp_ns: now,
+        action_type: "DeleteDuplicates".to_string(),
+        target_name: format!("{} duplicate files", count),
+        target_path: None,
+        status,
+        details_json: format!(r#"{{"bytes_reclaimed":{},"files_deleted":{},"files_requested":{}}}"#, bytes, files, count),
+        error_message: res.as_ref().err().cloned(),
+    };
+    if let Err(e) = state.db.record_operation(&op) {
+        eprintln!(
+            "[AppTrace Diagnostics] Operation history persistence failure for {}: {}",
+            op.operation_id, e
+        );
+    }
+    res
+}
+
+#[tauri::command]
+pub fn delete_duplicate_candidates(
+    candidates: Vec<DuplicateCandidateItem>,
+    state: State<'_, AppState>,
+) -> Result<(u64, usize), String> {
+    let count = candidates.len();
+    let res = crate::management::duplicates::delete_duplicate_candidates(candidates);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos() as u64;
+    let (bytes, files) = res.as_ref().copied().unwrap_or((0, 0));
+    let status = match &res {
+        Ok(_) if count > 0 && files == 0 => "Failed".to_string(),
+        Ok(_) if count > 0 && files < count => "PartialSuccess".to_string(),
+        Ok(_) => "Success".to_string(),
+        Err(_) => "Failed".to_string(),
+    };
+    let op = crate::management::models::OperationHistoryEntry {
+        operation_id: format!("op-dupdel-cand-{}", uuid::Uuid::now_v7()),
+        timestamp_ns: now,
+        action_type: "DeleteDuplicates".to_string(),
+        target_name: format!("{} duplicate candidates", count),
+        target_path: None,
+        status,
+        details_json: format!(r#"{{"bytes_reclaimed":{},"files_deleted":{},"candidates_requested":{}}}"#, bytes, files, count),
+        error_message: res.as_ref().err().cloned(),
+    };
+    if let Err(e) = state.db.record_operation(&op) {
+        eprintln!(
+            "[AppTrace Diagnostics] Operation history persistence failure for {}: {}",
+            op.operation_id, e
+        );
+    }
+    res
 }
 
 #[tauri::command]
@@ -470,8 +668,41 @@ pub fn hunt_software_resources(query: String) -> Result<HunterResult, String> {
 }
 
 #[tauri::command]
-pub fn get_management_capabilities() -> ManagementCapabilities {
-    crate::management::get_management_capabilities()
+pub fn get_management_capabilities() -> Result<ManagementCapabilities, String> {
+    #[cfg(target_os = "windows")]
+    {
+        Ok(ManagementCapabilities {
+            platform: "windows".to_string(),
+            has_registry_manager: true,
+            has_linux_config_manager: false,
+            has_services_manager: true,
+            has_scheduled_tasks_manager: true,
+            has_startup_manager: true,
+            has_uninstaller: true,
+            has_cleaner: true,
+            has_disk_analyzer: true,
+            has_duplicate_finder: true,
+            has_system_optimizer: true,
+            has_health_center: true,
+        })
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(ManagementCapabilities {
+            platform: "linux".to_string(),
+            has_registry_manager: false,
+            has_linux_config_manager: true,
+            has_services_manager: true,
+            has_scheduled_tasks_manager: true,
+            has_startup_manager: true,
+            has_uninstaller: true,
+            has_cleaner: true,
+            has_disk_analyzer: true,
+            has_duplicate_finder: true,
+            has_system_optimizer: true,
+            has_health_center: true,
+        })
+    }
 }
 
 #[tauri::command]
@@ -484,12 +715,13 @@ pub fn record_operation_history(
     error_message: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let entry = OperationHistoryEntry {
-        operation_id: uuid::Uuid::new_v4().to_string(),
-        timestamp_ns: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos() as u64,
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos() as u64;
+    let entry = crate::management::models::OperationHistoryEntry {
+        operation_id: format!("op-manual-{}", uuid::Uuid::now_v7()),
+        timestamp_ns: now,
         action_type,
         target_name,
         target_path,
@@ -504,6 +736,9 @@ pub fn record_operation_history(
 pub fn get_operation_history(
     limit: Option<usize>,
     state: State<'_, AppState>,
-) -> Result<Vec<OperationHistoryEntry>, String> {
-    state.db.get_operation_history(limit.unwrap_or(100)).map_err(|e| e.to_string())
+) -> Result<Vec<crate::management::models::OperationHistoryEntry>, String> {
+    state
+        .db
+        .get_operation_history(limit.unwrap_or(100))
+        .map_err(|e| e.to_string())
 }

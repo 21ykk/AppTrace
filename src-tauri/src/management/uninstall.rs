@@ -415,15 +415,30 @@ pub fn scan_app_leftovers(app_id: &str) -> Result<Vec<LeftoverItem>, String> {
 pub fn delete_leftovers(items: Vec<LeftoverItem>) -> Result<(u64, usize), String> {
     let mut total_bytes = 0u64;
     let mut count = 0usize;
+    let mut errors = Vec::new();
+    let mut selected_count = 0usize;
+
     for it in &items {
         if it.selected {
-            if let Some(size) = it.size_bytes {
-                total_bytes += size;
+            selected_count += 1;
+            match UninstallerEngine::delete_leftover_item(it) {
+                Ok(_) => {
+                    if let Some(size) = it.size_bytes {
+                        total_bytes += size;
+                    }
+                    count += 1;
+                }
+                Err(e) => {
+                    errors.push(e);
+                }
             }
-            UninstallerEngine::delete_leftover_item(it)?;
-            count += 1;
         }
     }
+
+    if selected_count > 0 && count == 0 && !errors.is_empty() {
+        return Err(errors.join("; "));
+    }
+
     Ok((total_bytes, count))
 }
 

@@ -9,65 +9,72 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blue?style=flat-square" alt="Platform: Windows" />
-  <img src="https://img.shields.io/badge/Platform-Linux%20(Cross--Platform)-orange?style=flat-square" alt="Platform: Linux" />
+  <a href="docs/installation/WINDOWS.md"><img src="https://img.shields.io/badge/Windows%20x64-Stable%20(v1.1.1)-blue?style=flat-square" alt="Windows x64: Stable" /></a>
+  <a href="docs/installation/LINUX.md"><img src="https://img.shields.io/badge/Linux%20x64-Public%20Beta-orange?style=flat-square" alt="Linux x64: Public Beta" /></a>
   <img src="https://img.shields.io/badge/Architecture-Tauri%202%20%2B%20Rust-brightgreen?style=flat-square" alt="Architecture: Tauri + Rust" />
   <img src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20TypeScript-61dafb?style=flat-square" alt="Frontend: React + TS" />
   <img src="https://img.shields.io/badge/Storage-Local%20SQLite%20(WAL)-lightgrey?style=flat-square" alt="Storage: SQLite WAL" />
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License: MIT" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License: MIT" /></a>
 </p>
 
 ---
 
-## 1. Overview
+## 1. About AppTrace
 
-**AppTrace** is a professional desktop system management, deep cleaning, and observability application built for power users, sysadmins, and software engineers. Designed with a **Dark Graphite** enterprise visual design system inspired by Windows Sysinternals Process Explorer, AppTrace unifies low-level system metrics with advanced application lifecycle management.
+**AppTrace** is a professional desktop system management, deep cleaning, and observability workstation built for power users, sysadmins, and software engineers. Designed with a **Dark Graphite** enterprise visual system inspired by Windows Sysinternals, AppTrace unifies low-level operating system telemetry with advanced application lifecycle management.
 
-Unlike conventional administration tools or generic cleaning utilities:
-- **100% Local-First & Private:** All telemetry, metrics, application records, and history are stored locally in SQLite (`WAL` mode). There are zero telemetry beacons, zero analytical tracking scripts, and zero cloud dependencies.
-- **Deep Operating System Understanding:** Correlates running processes with installed registry applications, startup run keys, scheduled tasks, network sockets, and filesystem footprints.
-- **Native Precision:** Utilizes native Win32 APIs directly (`RegOpenKeyExW`, `RegEnumValueW`, `RegSetValueExW`, Win32 Service Control Manager) for sub-millisecond execution and immunity against shell command injection.
+### Key Differentiators:
+- **Local-First Architecture:** AppTrace is designed as a local-first application. Application data and operation history are stored locally in SQLite (`WAL` mode). No intentional analytics or telemetry service is documented.
+- **Deep Operating System Understanding:** Correlates running processes with installed registry software, autostart run keys, background services, active network sockets, and filesystem footprints.
+- **Native Precision:** Utilizes native Win32 APIs directly (`RegOpenKeyExW`, `RegEnumValueW`, `RegSetValueExW`, Win32 Service Control Manager) for sub-millisecond execution and immunity against shell injection.
 - **Portable Architecture:** Operates as a completely self-contained Windows portable binary with zero installer requirements and zero runtime dev server dependencies.
 
 ---
 
-## 2. Visual Design System
+## 2. Key Features
 
-AppTrace is styled in a strictly neutral **Dark Graphite** enterprise workstation palette (`#101113` background, `#0B0C0E` sidebar, `#17191C` panel surfaces, `#1D2024` elevated cards, `#30343A` borders, with `#2878D0` diagnostic blue accents).
+| Category | Implemented Modules & Capabilities |
+| :--- | :--- |
+| **System Observability** | Real-time CPU & per-core load, physical memory commit gauges, network RX/TX bandwidth, storage volume health, and live filesystem directory change monitoring. |
+| **Process Intelligence** | Sysinternals-grade hierarchical process tree with PIDs, CPU%, Private Working Set RAM, disk I/O, status, and executable path resolution. |
+| **Network & Topology** | Active TCP/UDP socket enumeration, process-to-socket attribution, local GeoIP location flags, and an interactive physics-driven Canvas 2D dependency graph. |
+| **Software Management** | 64-bit, 32-bit (`Wow6432Node`), and per-user software inventory; safe uninstaller launcher; and orphaned leftover cache scanner (`%APPDATA%`, `%LOCALAPPDATA%`). |
+| **Windows Internals** | Native Win32 Registry Editor (`HKCU`/`HKLM`), Windows Service Control Manager (SCM) controller with critical service lockdown, and Startup autostart manager. |
+| **Storage & Cleaning** | Multi-category deep cleaner (temp files, crash dumps, WER error logs, browser caches), folder size tree analyzer, and 3-stage duplicate file finder. |
+| **Health & Optimization** | Multi-factor 0–100 System Health Diagnostic Score, telemetry-backed actionable optimization recommendations, and persistent SQLite operation audit trail. |
 
-### User Interface Layout
+---
 
-```
-+-----------------------------------------------------------------------------------------+
-| [Logo] AppTrace — System Observability & Management Suite             [Live] [Settings] |
-+-----------------------+-----------------------------------------------------------------+
-| MONITORING            | DASHBOARD / ACTIVE VIEW                                         |
-|  * Overview           | +--------------------+ +--------------------+ +---------------+ |
-|  * Processes          | | CPU: 12.4% (8c/16t)| | RAM: 14.2 / 31.8 GB| | Storage: 68%   | |
-|  * Performance        | +--------------------+ +--------------------+ +---------------+ |
-|  * Network            |                                                                 |
-|  * Filesystem         | PROCESS EXPLORER / APPLICATION MANAGEMENT TABLE                 |
-|                       | [ Search resources... ] [ Filter: All | User | Machine ]        |
-| APPLICATIONS & OS     | +-------------------------------------------------------------+ |
-|  * Applications       | | Name            | Publisher      | Version | Size   | State | |
-|  * Resource Hunter    | |-----------------+----------------+---------+--------+-------| |
-|  * Startup Manager    | | Visual Studio   | Microsoft Corp | 17.12.0 | 4.2 GB | Idle  | |
-|  * Services           | | Docker Desktop  | Docker Inc     | 4.35.0  | 1.8 GB | Run   | |
-|  * Scheduled Tasks    | +-------------------------------------------------------------+ |
-|  * Registry / Config  |                                                                 |
-|                       | CORRELATED RELATIONSHIPS PANEL                                  |
-| STORAGE & CLEANING    | * Executable: C:\Program Files\Docker\Docker\Docker Desktop.exe |
-|  * System Cleaner     | * Running PIDs: [14208, 18944]                                  |
-|  * Disk Analyzer      | * Run Key: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run   |
-|  * Duplicate Finder   | * Storage: %LOCALAPPDATA%\Docker (1.2 GB cache detected)        |
-+-----------------------+-----------------------------------------------------------------+
-```
+## 3. Platform Support Policy
 
-### Application Screenshots & Observability Gallery
+| Platform | Channel | Status | Tested Environment / Notes | Distribution Format |
+| :--- | :---: | :---: | :--- | :--- |
+| **Windows (x86_64)** | **Stable** | **Ready for Use** | Verified on Windows 11 Pro x64 (Build 26300). Target requirements: Windows 10 (1809+) / Windows 11 (x64) with WebView2. | Standalone Portable ZIP (`AppTrace-Windows-x64-Portable.zip`, 7.98 MB) |
+| **Ubuntu / Debian (x86_64)** | **Public Beta** | **Evaluation Only** | Build instructions provided for evaluation; native Linux compilation and GUI behavior are unverified. Packaged binaries are unavailable. | Source build instructions (not certified) |
 
-AppTrace features high-density, real-time diagnostic views designed for low-overhead telemetry and deep Windows system management.
+> [!NOTE]
+> **Platform Testing Scope:** Windows automated test suites and smoke verification were executed on Windows 11 Pro x64 (Build 26300). Windows 10 (1809+) is supported via standard Win32/Tauri API compatibility. Linux support is in **Public Beta**: native compilation and GUI behavior have not yet been verified on a Linux build host; packaged distributions (.deb, .rpm, .AppImage) are unavailable. The Linux Beta status does not affect Windows Stable availability.
 
-#### 1. System Observability & Process Intelligence
+---
+
+## 4. Download & Installation
+
+### Windows (Stable — Portable Release):
+1. **Download:** Get the latest [`AppTrace-Windows-x64-Portable.zip`](release/AppTrace-Windows-x64-Portable.zip) (7.98 MB).
+2. **Verify Checksum (Optional):**
+   ```powershell
+   Get-FileHash -Algorithm SHA256 .\AppTrace-Windows-x64-Portable.zip
+   # Expected SHA256: e35ff28dbfc926fcbcf836fde3e13415c8537be2c3f9bc19f32ed7df2df246cb
+   ```
+3. **Extract & Launch:** Extract the ZIP archive anywhere on your PC and double-click `AppTrace.exe`. No installation wizard or background services required.
+
+For complete setup instructions and SmartScreen guidance, see the [Windows Installation Guide](docs/installation/WINDOWS.md).
+
+---
+
+## 5. Visual Observability Gallery
+
+AppTrace features high-density, real-time diagnostic views designed for low-overhead telemetry and deep Windows system management:
 
 | System Overview Dashboard | Process Explorer (Hierarchical Tree) |
 | :---: | :---: |
@@ -84,8 +91,6 @@ AppTrace features high-density, real-time diagnostic views designed for low-over
 | [![Dependency Graph](docs/screenshots/dependency_graph.png)](docs/screenshots/dependency_graph.png) | [![Analytics Trends](docs/screenshots/analytics_trends.png)](docs/screenshots/analytics_trends.png) |
 | *Interactive force-directed live physics graph mapping relations between user apps, system services, and active network connections.* | *Long-term workload trendlines, physical memory demand curves, and aggregate network bandwidth over time.* |
 
-#### 2. System Management, Storage Cleaning & Windows Internals
-
 | Windows Registry Manager | Deep System & Storage Cleaner |
 | :---: | :---: |
 | [![Registry Manager](docs/screenshots/registry_manager.png)](docs/screenshots/registry_manager.png) | [![System Cleaner](docs/screenshots/system_cleaner.png)](docs/screenshots/system_cleaner.png) |
@@ -98,86 +103,29 @@ AppTrace features high-density, real-time diagnostic views designed for low-over
 
 ---
 
-## 3. Comprehensive Feature Matrix
+## 6. Documentation Portal
 
-| Module | Purpose & Core Capabilities | Platform Support | Security Guard |
-| :--- | :--- | :---: | :--- |
-| **System Observability** | Real-time CPU, RAM, disk I/O, process tree hierarchy, network socket table, and filesystem event timeline. | Windows & Linux | Read-only kernel queries |
-| **Installed Applications** | Scans 64-bit, 32-bit (`Wow6432Node`), and per-user (`HKCU`) registry roots. Correlates running processes with install paths. | Windows & Linux (`dpkg`/`rpm`/`flatpak`) | Read-only registry & package enumeration |
-| **Advanced Uninstaller** | Parses uninstall command strings safely without shell injection. Supports quiet execution (`QuietUninstallString`). | Windows & Linux | Rejects unvalidated command strings |
-| **Leftover Scanner** | Heuristic detection of orphaned `%APPDATA%`, `%LOCALAPPDATA%`, `%PROGRAMDATA%`, and publisher registry trees. | Windows & Linux | Hard block on OS roots (`C:\Windows`, `System32`) |
-| **Startup Manager** | Discovers registry Run keys (`HKCU`/`HKLM`) and Startup folders. Enables safe toggling via `AppTrace_Disabled_` prefixes. | Windows & Linux (XDG autostart) | Preserves original command string |
-| **Services Manager** | Queries Windows Service Control Manager (SCM). Displays status, startup types (Automatic/Manual/Disabled), and allows starting/stopping. | Windows & Linux (`systemctl`) | **Hard lock** on critical services (`rpcss`, `lsass`, `csrss`, etc.) |
-| **Scheduled Tasks** | Windows Task Scheduler parser with `schtasks` fallback. Displays triggers, actions, authors, and states. | Windows & Linux (`systemd-timers`/`cron`) | Execution flags validated |
-| **Win32 Registry Manager** | Native Win32 API tree browser, value editor (`REG_SZ`, `REG_DWORD`, `REG_QWORD`, `REG_BINARY`, `REG_MULTI_SZ`), search, and `.reg` exporter. | Windows (Native Win32) | Hard block on `SYSTEM\CurrentControlSet`, `SAM`, `SECURITY` |
-| **Deep Cleaner** | Multi-category scanner for System Temp, Crash Dumps (`.dmp`), WER error reports, browser caches, and system logs. | Windows & Linux | Prevents symlink traversal; preview before deletion |
-| **Disk Analyzer** | Recursive multi-depth folder usage aggregation, breadcrumb navigation, and bounded largest files detector. | Windows & Linux | Bypasses symlink loops; memory-bounded pruning |
-| **Duplicate Finder** | 3-stage duplicate detection (File Size $\rightarrow$ 4 KB Header Hash $\rightarrow$ Full 128-bit streaming hash). Zero false positives. | Windows & Linux | Requires full-content cryptographic match |
-| **System Health Center** | Multi-factor 0–100 health diagnostic score evaluating storage headroom, memory commitment, CPU runaways, and service states. | Windows & Linux | Uses real telemetry; never invents fake scores |
-| **System Optimizer** | Actionable recommendations backed by measured system evidence with classified risk levels. | Windows & Linux | Previews impact; no automatic silent modifications |
-| **Resource Hunter** | Universal software search cross-indexing installed apps, active processes, filesystem files, registry keys, and services. | Windows & Linux | Read-only correlation queries |
-| **Operation History** | Persistent SQLite audit log recording every uninstallation, cleaning action, startup toggle, and service control event. | Windows & Linux | ACID transaction logging in SQLite |
+AppTrace includes organized, professional documentation for users, administrators, and developers:
 
----
+### User & Installation Guides:
+- **[Windows Installation Guide (Stable)](docs/installation/WINDOWS.md):** Step-by-step setup, SHA-256 validation, and SmartScreen guidance.
+- **[Linux Installation Guide (Public Beta)](docs/installation/LINUX.md):** Distribution requirements, system libraries, and building from source.
+- **[First Start Guide](docs/guides/FIRST-START.md):** Walkthrough of the UI, widget layout, and safe management workflows.
+- **[Feature Guide](docs/guides/FEATURES.md):** Detailed technical specifications of all 12 management and monitoring modules.
+- **[Uninstallation Guide](docs/guides/UNINSTALLATION.md):** Safe removal of the portable application and local SQLite user data.
+- **[Troubleshooting Guide](docs/installation/TROUBLESHOOTING.md):** Solutions for startup issues, permissions, and database locks.
 
-## 4. Platform Compatibility
-
-| Capability | Windows 10 / 11 (x86_64) | Linux (x86_64 / arm64) |
-| :--- | :---: | :---: |
-| **Core Telemetry (CPU, RAM, Sockets)** | **Supported (Verified on Host)** | **Supported (sysinfo / netstat2)** |
-| **Application Inventory** | **Supported (64-bit, 32-bit, HKCU)** | **Supported (`dpkg`, `rpm`, `flatpak`)** |
-| **Uninstaller & Leftover Scanner** | **Supported (Verified on Host)** | **Supported (Package remove + config)** |
-| **Win32 Registry Manager** | **Supported (Native Win32 APIs)** | *Not Applicable (Windows Architecture)* |
-| **Linux Configuration Browser** | *Not Applicable* | **Supported (`/etc` structured browser)** |
-| **Startup Management** | **Supported (Registry & Startup Menu)** | **Supported (XDG autostart & user units)** |
-| **Services Control** | **Supported (Win32 SCM & net.exe)** | **Supported (`systemctl` integration)** |
-| **Scheduled Tasks** | **Supported (Task Scheduler)** | **Supported (`systemd.timer` / `crontab`)** |
-| **Deep Cleaner & Disk Analyzer** | **Supported (Verified on Host)** | **Supported (Native POSIX traversal)** |
-| **Duplicate Detection** | **Supported (Verified on Host)** | **Supported (Pure Rust 128-bit engine)** |
-| **Standalone Portable Release** | **Supported (`AppTrace.exe`, ~26 MB)** | **Supported (Standalone AppImage/Binary)** |
+### Developer & Technical References:
+- **[Building from Source](docs/development/BUILDING.md):** Toolchains, prerequisites, and production build instructions.
+- **[Contributing Guide](docs/development/CONTRIBUTING.md):** Code standards, design system rules, and verification requirements.
+- **[Technical Architecture](docs/ARCHITECTURE.md):** Deep technical dive into collectors, IPC gateway, and SQLite WAL storage.
+- **[Security Policy](SECURITY.md):** Security boundaries, path traversal defenses, and vulnerability disclosure.
+- **[Independent Verification Report](docs/INDEPENDENT_VERIFICATION_REPORT.md):** Independent release gate evaluation and audit evidence.
+- **[Complete Documentation Index](docs/README.md):** Central navigation portal for all project documentation.
 
 ---
 
-## 5. Security & Safety Architecture
-
-AppTrace enforces strict safety boundaries to ensure destructive operations cannot damage the host operating system:
-
-```
-+-----------------------------------------------------------------------------------+
-|                            USER INITIATED ACTION                                  |
-|         (e.g., Clean Temp, Delete Leftovers, Toggle Startup, Edit Registry)       |
-+-----------------------------------------------------------------------------------+
-                                          |
-                                          v
-+-----------------------------------------------------------------------------------+
-|                          APITRACE SAFETY SHIELD LAYER                             |
-+-----------------------------------------------------------------------------------+
-| [Path Canonicalization]    Rejects relative traversal (".."), symlinks, roots.     |
-| [OS Root Blacklist]        Absolute block: C:\Windows, System32, Program Files.   |
-| [Profile Protection]       Absolute block: C:\Users\<name>, Documents, Desktop.   |
-| [Registry Hive Lock]       Blocks: HKLM, HKCU roots, SAM, SECURITY, CurrentControlSet.|
-| [Critical Service Lock]    Blocks stopping: rpcss, samss, lsass, csrss, winlogon. |
-+-----------------------------------------------------------------------------------+
-                                          |
-                     [ SAFETY VALIDATION PASSED? ]
-                               /         \
-                             YES          NO
-                             /              \
-                            v                v
-            [ EXECUTE NATIVE OPERATION ]     [ OPERATION ABORTED ]
-            * Native Win32 API               * Returns specific safety error
-            * Audit log recorded in SQLite   * Zero changes written to disk
-```
-
-### Key Safeguards:
-1. **Never Silently Destructive:** All cleaning and uninstallation routines require explicit user preview and confirmation.
-2. **Path Traversal Protection:** Every path submitted to `is_safe_directory` is normalized, inspected for `..` traversal tokens, and validated against canonical filesystem targets.
-3. **No Shell Concatenation:** Uninstallation commands are tokenized into explicit executable and argument vectors, preventing shell injection vulnerabilities.
-4. **Least Privilege Operation:** AppTrace runs as a standard user process. When administrative operations are required (e.g. system service control or HKLM writes), clear elevation prompts are handled through documented Windows UAC / SCM channels.
-
----
-
-## 6. Architecture & Technology Stack
+## 7. Technology Stack
 
 ```mermaid
 flowchart TD
@@ -202,7 +150,7 @@ flowchart TD
     end
 
     subgraph Storage ["Local Storage (%LOCALAPPDATA%\\AppTrace)"]
-        DB_File[("apptrace.db (SQLite)")]
+        DB_File[("apptrace.db (SQLite WAL)")]
         Settings_File["settings.json"]
     end
 
@@ -211,129 +159,49 @@ flowchart TD
     RustCore --> Storage
 ```
 
----
-
-## 7. Installation & Portable Execution
-
-### Portable Windows Build (Zero Installation)
-AppTrace is distributed as an enterprise-grade portable binary:
-
-```
-release/portable/AppTrace/AppTrace.exe
-```
-
-- **Zero Installer Needed:** Extract or copy `AppTrace.exe` anywhere (Desktop, USB drive, network share) and double-click to run.
-- **Embedded Frontend:** The complete React/TypeScript user interface is embedded directly inside the 26 MB executable. It does **not** connect to `localhost:5173` or require an active Node.js server.
-- **Standard Runtime:** Requires Windows 10 (Build 19041+) or Windows 11 with the standard Microsoft Edge WebView2 runtime (pre-installed on all modern Windows installations).
-
-### Data Storage Paths
-AppTrace stores all operational state and telemetry strictly in standard local paths:
-- **Windows:** `%LOCALAPPDATA%\AppTrace\`
-  - Database: `%LOCALAPPDATA%\AppTrace\apptrace.db`
-  - Settings: `%LOCALAPPDATA%\AppTrace\settings.json`
-- **Linux:** `~/.local/share/apptrace/`
+- **Runtime Framework:** [Tauri 2](https://tauri.app/) (embedded native WebView2 on Windows, WebKit2GTK on Linux).
+- **Systems Core:** [Rust](https://www.rust-lang.org/) (2024 edition, native Win32 APIs via `windows-sys`).
+- **Frontend Architecture:** [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/).
+- **Data Persistence:** [SQLite](https://www.sqlite.org/) in `WAL` mode via [rusqlite](https://github.com/rusqlite/rusqlite).
 
 ---
 
-## 8. Building from Source
+## 8. Privacy & Defensive Security
 
-### Prerequisites
-- **Node.js:** v18.0.0 or higher (v20+ recommended)
-- **Rust Toolchain:** v1.85.0+ (stable channel)
-- **C++ Build Tools:** Visual Studio Build Tools (C++ x86/x64 compiler) on Windows, or `build-essential` on Linux.
-- **Tauri CLI:** Installed locally via `package.json` devDependencies.
+AppTrace enforces strict safety boundaries to ensure destructive operations cannot damage the host operating system:
 
-### Step-by-Step Build Commands
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/your-username/AppTrace.git
-cd AppTrace
-
-# 2. Install frontend dependencies
-npm install
-
-# 3. Compile and verify TypeScript frontend
-npm run build
-
-# 4. Run Rust systems core verification
-cargo check --manifest-path src-tauri/Cargo.toml
-
-# 5. Execute comprehensive automated verification suite
-cargo run --manifest-path src-tauri/Cargo.toml --bin test_runner
-
-# 6. Build production portable standalone executable
-npm run tauri -- build --no-bundle
-```
-
-On Windows, you can also execute the automated verification and packaging script:
-```powershell
-powershell.exe -ExecutionPolicy Bypass -File scripts\build-windows.ps1
-```
+1. **Local-First & No External Telemetry SDKs:** AppTrace is designed as a local-first application. Application data and operation history are stored locally. No intentional analytics or telemetry service is documented in the application source code. (Third-party runtime components, such as Microsoft Edge WebView2, may perform standard OS-level platform queries outside application control.)
+2. **System Root Guards:** Destructive operations strictly block system directories (`C:\Windows`, `System32`, `SysWOW64`, `Program Files`, `/etc`, `/bin`, `/boot`, `/usr`).
+3. **Path Traversal Defenses:** All paths are normalized, canonicalized, and checked for `..` tokens before deletion.
+4. **Symlink Rejection:** Deletion engines inspect `fs::symlink_metadata` and refuse to unlink symlinks to prevent redirection attacks.
+5. **Critical Service Locks:** Essential OS services (`rpcss`, `lsass`, `csrss`, `winlogon`, `cryptsvc`, `eventlog`) cannot be stopped or disabled.
+6. **Decoupled Operation Logging:** Operating system command results remain decoupled from database persistence. A database logging failure will never falsely report that an OS action failed.
 
 ---
 
-## 9. Automated Testing & Verification
+## 9. Development Status
 
-AppTrace includes an automated integration test runner (`src-tauri/src/bin/test_runner.rs`) that validates real operating system interactions against disposable, isolated fixtures:
+| Channel | Target Architecture | Current Version | Status |
+| :--- | :--- | :---: | :---: |
+| **Windows** | x86_64 (Intel / AMD 64-bit) | **v1.1.1** | **Stable — Verified on Windows 11 Pro (Build 26300)** |
+| **Linux** | x86_64 (Intel / AMD 64-bit) | **v1.1.1** | **Public Beta — Evaluation Only (Unverified Native Build)** |
 
-```
-============================================================
-    APPTRACE COMPREHENSIVE FUNCTIONAL VERIFICATION SUITE    
-============================================================
-[TEST 1/11] Database Subsystem & SCHEMA_V2 Migrations... PASSED
-[TEST 2/11] Uninstaller Safety Rules & Command Parsing... PASSED
-[TEST 3/11] Disk Analyzer & Largest Files Detection... PASSED
-[TEST 4/11] 3-Stage Duplicate Finder (Header Collision Check)... PASSED
-[TEST 5/11] Deep Cleaner Categories & Safety Flags... PASSED
-[TEST 6/11] Native Win32 Registry Manager Operations... PASSED
-[TEST 7/11] Applications Discovery & Correlation Engine... PASSED (88 installed applications discovered)
-[TEST 8/11] Startup Manager Discovery... PASSED (14 startup entries discovered)
-[TEST 9/11] Services Manager & Critical Service Lockdown... PASSED (200 services checked, critical services protected)
-[TEST 10/11] System Health Score & Telemetry-Backed Optimizer... PASSED (Telemetry-scored health index computed)
-[TEST 11/11] Universal Software & Resource Hunter... PASSED (Cross-correlated search active)
-
-============================================================
-  ALL COMPREHENSIVE VERIFICATION TESTS PASSED SUCCESSFULLY! 
-============================================================
-```
-
-To run smoke-testing on the portable release binary:
-```powershell
-powershell.exe -ExecutionPolicy Bypass -File scripts\verify-release.ps1
-```
+- Automated verification test suite (`test_runner`): **11/11 Suites Passed**.
+- Standalone portable smoke verification: **Passed (PID 33252, ~69 MB RAM)**.
+- Cryptographic release manifests: Verified in [`release/checksums/SHA256SUMS.txt`](release/checksums/SHA256SUMS.txt).
 
 ---
 
-## 10. Troubleshooting
-
-| Issue | Root Cause | Solution |
-| :--- | :--- | :--- |
-| **`ERR_CONNECTION_REFUSED` on startup** | You launched `src-tauri\target\debug\apptrace.exe` without running `npm run tauri dev`. | Launch the release portable binary at `release\portable\AppTrace\AppTrace.exe`. Debug builds connect to Vite at `localhost:5173`, whereas release builds embed all assets internally. |
-| **Permission Denied on Registry / Service Change** | Windows User Account Control restricts standard user tokens from writing to system hives (`HKLM`) or controlling drivers. | Right-click `AppTrace.exe` and select **Run as administrator** if modifying machine-wide services or system configuration. |
-| **Missing WebView2 Runtime** | System lacks Microsoft Edge WebView2 runtime. | Modern Windows 10/11 includes this by default. On Windows Server or N-editions, install the evergreen WebView2 runtime from Microsoft. |
-| **File Locked during Build / Copy** | An existing instance of `AppTrace.exe` is currently running. | Run `Get-Process AppTrace | Stop-Process` or run `scripts\build-windows.ps1` which automatically closes running instances before copying. |
-
----
-
-## 11. Contributing
+## 10. Contributing
 
 Contributions to AppTrace are welcome!
-1. Fork the repository and create a feature branch (`git checkout -b feature/system-enhancement`).
-2. Adhere to Rust formatting (`cargo fmt`) and TypeScript linting (`npx oxlint`).
-3. Ensure all tests in `src-tauri/src/bin/test_runner.rs` pass before opening a pull request.
-4. Maintain the strict **Dark Graphite** design system and safety isolation boundaries.
+1. Review the [Contributing Guide](docs/development/CONTRIBUTING.md) and [Building Guide](docs/development/BUILDING.md).
+2. Adhere to Rust formatting (`cargo fmt`) and TypeScript typing (`npx tsc -b`).
+3. Ensure all tests in `src-tauri/src/bin/test_runner.rs` pass before opening a Pull Request.
+4. Preserve the strict **Dark Graphite** design system and defensive security boundaries.
 
 ---
 
-## 12. License & Acknowledgements
+## 11. License
 
-This project is licensed under the **MIT License**.
-
-AppTrace is powered by exceptional open-source technologies:
-- [Tauri](https://tauri.app/) — Lightweight desktop application framework
-- [Rust](https://www.rust-lang.org/) — High-performance systems programming
-- [React](https://react.dev/) — User interface library
-- [Tailwind CSS](https://tailwindcss.com/) — Utility-first CSS framework
-- [Lucide](https://lucide.dev/) — Enterprise system iconography
-- [SQLite / rusqlite](https://github.com/rusqlite/rusqlite) — Reliable local persistence
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.

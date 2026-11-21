@@ -6,7 +6,7 @@
 **Binary Size:** 26.03 MB (27,290,400 bytes)  
 **Target Architecture:** Windows 10 / 11 (x86_64)  
 **Verification Date:** November 21, 2026  
-**Final Release Assessment:** **PRODUCTION READY**
+**Final Release Assessment:** **RELEASE CANDIDATE (WINDOWS VERIFIED)**
 
 ---
 
@@ -18,7 +18,7 @@ All reported build and deployment issues have been diagnosed, repaired at the ro
 1. **Portable Release Failure Resolved:** The previous deployment failure (exit code 1) was diagnosed as a file-lock collision caused by a running instance of `AppTrace.exe`. The deployment script (`scripts\build-windows.ps1`) has been engineered to automatically detect and close running processes prior to file copy, verify destination integrity, and execute smoke-testing automatically.
 2. **Native Win32 Registry Engine:** Completely removed fragile PowerShell process execution from the Registry Manager. All registry navigation, value reading, editing, and deletion operate through native Win32 APIs (`windows-sys`), delivering sub-millisecond responsiveness (<1 ms) and immunity to command injection.
 3. **Critical Uninstaller Safety Shield:** Fixed a severe directory protection flaw in `is_safe_directory` where substring equality previously failed to protect system subfolders such as `System32`. Hardened path traversal defenses to reject relative traversal (`..`), symlink redirection, and user profile root directories.
-4. **Zero-Dependency Portable Binary:** The standalone binary embeds the complete React 19 / TypeScript / Tailwind CSS frontend into the executable. It operates 100% offline with zero dependencies on Node.js or development servers, eliminating `ERR_CONNECTION_REFUSED`.
+4. **Zero-Dependency Portable Binary:** The standalone binary embeds the complete React 19 / TypeScript / Tailwind CSS frontend into the executable. It operates offline with zero dependencies on Node.js or development servers, eliminating `ERR_CONNECTION_REFUSED`.
 5. **Comprehensive Automated Test Suite:** Implemented `test_runner.rs`, executing 11 isolated test suites covering database transactions, schema migrations, uninstaller safety, Win32 registry manipulation, 3-stage duplicate collision checks, and service locks. All 11 suites passed with zero errors.
 
 ---
@@ -43,7 +43,7 @@ All reported build and deployment issues have been diagnosed, repaired at the ro
 | **System Registry Hive Corruption** | Potential deletion of root hives or hardware control sets. | Added hard checks blocking `HKLM`, `HKCU`, `SYSTEM\CurrentControlSet`, `SAM`, and `SECURITY`. | **HIGH** | **RESOLVED** |
 | **Critical Service Termination** | User or automated tool stopping essential OS background services. | Added lockdown filter: `rpcss`, `samss`, `lsass`, `csrss`, `winlogon`, `cryptsvc`, `eventlog` cannot be stopped. | **HIGH** | **RESOLVED** |
 | **Unintended Data Loss in Cleaner** | Cleaner traversing external symlinks out of cache directories. | Added `!ft.is_symlink()` guards to all recursive filesystem traversal loops. | **MEDIUM** | **RESOLVED** |
-| **User Privacy & Telemetry** | External network beacons or cloud dependencies. | Verified 100% offline operation. Zero telemetry endpoints, zero cloud sync, 100% local SQLite storage. | **LOW** | **VERIFIED** |
+| **User Privacy & Telemetry** | External network beacons or cloud dependencies. | Verified offline operation. Zero telemetry endpoints, zero cloud sync, local SQLite storage. | **LOW** | **VERIFIED** |
 
 ---
 
@@ -153,11 +153,11 @@ The documentation suite has been updated and synchronized with the codebase:
 
 ## 8. Final Release Assessment
 
-### Assessment: **PRODUCTION READY**
+### Assessment: **RELEASE CANDIDATE (WINDOWS VERIFIED)**
 
 **Justification:**
 - All 12 management suite modules and telemetry collectors are functional and verified.
 - Critical directory and registry protection safeguards have been tested and verified.
-- The standalone release build compiles cleanly in 1m 10s with 0 errors and 0 warnings.
-- The portable distribution starts in 1.2s, consumes ~58 MB RAM, and functions completely offline without local development servers.
-- The automated verification suite (`test_runner.rs`) achieves 100% pass rate (11/11 tests).
+- The standalone release build compiles cleanly with 0 errors and 0 warnings.
+- The portable distribution starts cleanly, consumes ~66-69 MB RAM, and functions offline without local development servers.
+- The automated verification suite (`test_runner.rs`) passed all 11 test suites.

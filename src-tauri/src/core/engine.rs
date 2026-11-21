@@ -371,6 +371,7 @@ impl TelemetryEngine {
             app_memory_rss_bytes: app_rss,
             active_threads_count: app_threads,
             uptime_seconds: self.start_time.elapsed().as_secs(),
+            persistence_failures_count: self.db.get_persistence_failure_count(),
         }
     }
 }

@@ -152,6 +152,13 @@ pub struct DuplicateGroup {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DuplicateCandidateItem {
+    pub target_path: String,
+    pub reference_path: Option<String>,
+    pub expected_size: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptimizationRecommendation {
     pub id: String,
     pub title: String,

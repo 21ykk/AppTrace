@@ -11,6 +11,7 @@ pub type SnapshotRecord = (u64, f32, u64, u64, u32);
 pub struct DatabaseRepository {
     conn: Mutex<Connection>,
     db_path: PathBuf,
+    persistence_failures_count: std::sync::atomic::AtomicU64,
 }
 
 impl DatabaseRepository {
@@ -30,6 +31,7 @@ impl DatabaseRepository {
         let repo = Self {
             conn: Mutex::new(conn),
             db_path,
+            persistence_failures_count: std::sync::atomic::AtomicU64::new(0),
         };
 
         repo.seed_default_dashboards()?;
@@ -623,7 +625,7 @@ impl DatabaseRepository {
         entry: &crate::management::models::OperationHistoryEntry,
     ) -> Result<(), rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
-        conn.execute(
+        match conn.execute(
             "INSERT INTO operation_history (operation_id, timestamp_ns, action_type, target_name, target_path, status, details_json, error_message)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
@@ -636,8 +638,28 @@ impl DatabaseRepository {
                 entry.details_json,
                 entry.error_message,
             ],
-        )?;
-        Ok(())
+        ) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                self.persistence_failures_count
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                eprintln!(
+                    "[AppTrace Database Persistence Error] Failed to persist operation history ({}): {}",
+                    entry.operation_id, e
+                );
+                Err(e)
+            }
+        }
+    }
+
+    pub fn get_persistence_failure_count(&self) -> u64 {
+        self.persistence_failures_count
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub fn increment_persistence_failure_count(&self) {
+        self.persistence_failures_count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn get_operation_history(

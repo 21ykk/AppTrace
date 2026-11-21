@@ -1,10 +1,10 @@
 use app_lib::core::app_paths::AppPaths;
 use app_lib::database::DatabaseManager;
-use app_lib::management::models::OperationHistoryEntry;
+use app_lib::management::models::{DuplicateCandidateItem, OperationHistoryEntry};
 use app_lib::management::applications::ApplicationsManager;
 use app_lib::management::cleaner::scan_cleanable_categories;
 use app_lib::management::disk_analyzer::{analyze_disk_space, get_largest_files};
-use app_lib::management::duplicates::scan_duplicate_files;
+use app_lib::management::duplicates::{delete_duplicate_candidates, delete_duplicate_files, scan_duplicate_files};
 use app_lib::management::health::get_system_health_report;
 use app_lib::management::hunter::hunt_software_resources;
 use app_lib::management::optimizer::get_optimization_recommendations;
@@ -40,34 +40,113 @@ fn main() {
 }
 
 fn test_database_subsystem() {
-    print!("[TEST 1/11] Database Subsystem & SCHEMA_V2 Migrations... ");
+    print!("[TEST 1/11] Database Subsystem & SCHEMA_V2 Migrations (Audit & Concurrency)... ");
     let paths = Arc::new(AppPaths::resolve());
     assert!(!paths.root.as_os_str().is_empty());
 
     let temp_db_dir = std::env::temp_dir().join(format!("apptrace_test_db_{}", uuid::Uuid::now_v7()));
     std::fs::create_dir_all(&temp_db_dir).unwrap();
 
-    let db = DatabaseManager::new(Some(temp_db_dir.clone())).expect("DB initialization failed");
+    let db = Arc::new(DatabaseManager::new(Some(temp_db_dir.clone())).expect("DB initialization failed"));
     let integrity = db.run_integrity_check().expect("Integrity check failed");
     assert_eq!(integrity, "ok", "Database integrity is not ok");
 
-    // Test operations history table
-    let op = OperationHistoryEntry {
-        operation_id: "op_test_1".to_string(),
+    // 1. Success operation record
+    let op_success = OperationHistoryEntry {
+        operation_id: "op_test_success".to_string(),
         timestamp_ns: 1000,
-        action_type: "TestValidation".to_string(),
+        action_type: "UninstallApp".to_string(),
         target_name: "VerificationApp".to_string(),
         target_path: Some("/test/path".to_string()),
         status: "Success".to_string(),
+        details_json: r#"{"force_kill":false,"run_uninstaller":true,"remove_leftovers":true}"#.to_string(),
+        error_message: None,
+    };
+    db.record_operation(&op_success).expect("Failed to record success operation");
+
+    // 2. Failed operation record
+    let op_failed = OperationHistoryEntry {
+        operation_id: "op_test_failed".to_string(),
+        timestamp_ns: 2000,
+        action_type: "DeleteRegistryOrConfig".to_string(),
+        target_name: "HKLM\\Software\\Protected".to_string(),
+        target_path: Some("HKLM\\Software\\Protected".to_string()),
+        status: "Failed".to_string(),
+        details_json: r#"{"value_name":null}"#.to_string(),
+        error_message: Some("Access is denied (protected system hive)".to_string()),
+    };
+    db.record_operation(&op_failed).expect("Failed to record failed operation");
+
+    // 3. PartialSuccess operation record
+    let op_partial = OperationHistoryEntry {
+        operation_id: "op_test_partial".to_string(),
+        timestamp_ns: 3000,
+        action_type: "DeleteDuplicates".to_string(),
+        target_name: "5 duplicate files".to_string(),
+        target_path: None,
+        status: "PartialSuccess".to_string(),
+        details_json: r#"{"bytes_reclaimed":2048,"files_deleted":3,"files_requested":5}"#.to_string(),
+        error_message: None,
+    };
+    db.record_operation(&op_partial).expect("Failed to record partial success operation");
+
+    // 4. Verify ordering (timestamp_ns DESC)
+    let history = db.get_operation_history(10).expect("Failed to get operation history");
+    assert_eq!(history.len(), 3);
+    assert_eq!(history[0].operation_id, "op_test_partial"); // timestamp 3000
+    assert_eq!(history[0].status, "PartialSuccess");
+    assert_eq!(history[1].operation_id, "op_test_failed");  // timestamp 2000
+    assert_eq!(history[1].status, "Failed");
+    assert!(history[1].error_message.as_ref().unwrap().contains("Access is denied"));
+    assert_eq!(history[2].operation_id, "op_test_success"); // timestamp 1000
+    assert_eq!(history[2].status, "Success");
+
+    // 5. Concurrency safety: multi-threaded writes
+    let mut handles = Vec::new();
+    for thread_idx in 0..5 {
+        let db_clone = Arc::clone(&db);
+        handles.push(std::thread::spawn(move || {
+            for i in 0..10 {
+                let op = OperationHistoryEntry {
+                    operation_id: format!("op_thread_{}_{}", thread_idx, i),
+                    timestamp_ns: 4000 + (thread_idx * 100 + i) as u64,
+                    action_type: "ConcurrentTest".to_string(),
+                    target_name: format!("Item_{}_{}", thread_idx, i),
+                    target_path: None,
+                    status: "Success".to_string(),
+                    details_json: "{}".to_string(),
+                    error_message: None,
+                };
+                db_clone.record_operation(&op).expect("Concurrent write failed");
+            }
+        }));
+    }
+    for h in handles {
+        h.join().unwrap();
+    }
+
+    let full_history = db.get_operation_history(100).expect("Failed to get full history");
+    assert_eq!(full_history.len(), 3 + 50);
+
+    // 6. Persistence failure test: duplicate primary key
+    let op_duplicate = OperationHistoryEntry {
+        operation_id: "op_test_success".to_string(), // duplicate PK
+        timestamp_ns: 9999,
+        action_type: "DuplicatePK".to_string(),
+        target_name: "TestItem".to_string(),
+        target_path: None,
+        status: "Failed".to_string(),
         details_json: "{}".to_string(),
         error_message: None,
     };
-    db.record_operation(&op).expect("Failed to record operation");
-
-    let history = db.get_operation_history(10).expect("Failed to get operation history");
-    assert_eq!(history.len(), 1);
-    assert_eq!(history[0].target_name, "VerificationApp");
-    assert_eq!(history[0].action_type, "TestValidation");
+    let initial_errs = db.get_persistence_failure_count();
+    let res = db.record_operation(&op_duplicate);
+    assert!(res.is_err(), "Duplicate primary key must return Err");
+    assert_eq!(
+        db.get_persistence_failure_count(),
+        initial_errs + 1,
+        "Persistence failure count must increment on SQLite write error"
+    );
 
     let _ = std::fs::remove_dir_all(&temp_db_dir);
     println!("PASSED");
@@ -140,29 +219,37 @@ fn test_disk_analyzer_subsystem() {
 }
 
 fn test_duplicate_finder_subsystem() {
-    print!("[TEST 4/11] 3-Stage Duplicate Finder (Header Collision Check)... ");
+    print!("[TEST 4/11] 3-Stage Duplicate Finder & Revalidation Lifecycle... ");
     let temp_dir = std::env::temp_dir().join(format!("apptrace_test_dup_{}", uuid::Uuid::now_v7()));
     std::fs::create_dir_all(&temp_dir).unwrap();
 
-    // 8KB identical pattern
+    // 1. 8KB identical pattern
     let mut pattern_a = vec![0x11; 8192];
     for (i, b) in pattern_a.iter_mut().enumerate() {
         *b = (i % 256) as u8;
     }
 
     // Pattern B: identical first 4KB (4096 bytes), but DIFFERENT in the last 4KB!
-    // This rigorously proves stage 2 (header hash) does NOT produce a false positive in stage 3!
     let mut pattern_b = pattern_a.clone();
     for i in 4096..8192 {
         pattern_b[i] = 0xFF;
     }
 
-    std::fs::write(temp_dir.join("orig.bin"), &pattern_a).unwrap();
-    std::fs::write(temp_dir.join("dup1.bin"), &pattern_a).unwrap();
-    std::fs::write(temp_dir.join("dup2.bin"), &pattern_a).unwrap();
-    std::fs::write(temp_dir.join("same_header_diff_body.bin"), &pattern_b).unwrap();
-    std::fs::write(temp_dir.join("distinct.bin"), &vec![0x42; 8192]).unwrap();
+    let orig_path = temp_dir.join("orig.bin");
+    let dup1_path = temp_dir.join("dup1.bin");
+    let dup2_path = temp_dir.join("dup2.bin");
+    let collision_path = temp_dir.join("same_header_diff_body.bin");
+    let distinct_path = temp_dir.join("distinct.bin");
+    let empty_path = temp_dir.join("empty.bin");
 
+    std::fs::write(&orig_path, &pattern_a).unwrap();
+    std::fs::write(&dup1_path, &pattern_a).unwrap();
+    std::fs::write(&dup2_path, &pattern_a).unwrap();
+    std::fs::write(&collision_path, &pattern_b).unwrap();
+    std::fs::write(&distinct_path, &vec![0x42; 8192]).unwrap();
+    std::fs::write(&empty_path, b"").unwrap();
+
+    // 2. Scan duplicates
     let groups = scan_duplicate_files(&temp_dir.to_string_lossy(), Some(1024)).expect("Duplicate scan failed");
     assert_eq!(groups.len(), 1, "Expected exactly 1 duplicate group");
     assert_eq!(groups[0].duplicate_paths.len(), 2, "Expected 2 duplicate files in group");
@@ -171,6 +258,85 @@ fn test_duplicate_finder_subsystem() {
     // Verify same_header_diff_body.bin was NOT included in duplicates
     let is_false_positive = groups[0].duplicate_paths.iter().any(|p| p.contains("same_header_diff_body"));
     assert!(!is_false_positive, "Stage 3 full-content hash correctly rejected header-collision file");
+
+    // 3. Revalidation lifecycle test: Candidate modified after scan (size changed)
+    let mod_candidate = temp_dir.join("mod_after_scan.bin");
+    std::fs::write(&mod_candidate, &pattern_a).unwrap();
+    // Simulate modification after scan
+    std::fs::write(&mod_candidate, b"short content").unwrap();
+
+    let candidates = vec![
+        DuplicateCandidateItem {
+            target_path: mod_candidate.to_string_lossy().to_string(),
+            reference_path: Some(orig_path.to_string_lossy().to_string()),
+            expected_size: Some(8192), // expected 8192, but modified to 13 bytes
+        }
+    ];
+    let (reclaimed, count) = delete_duplicate_candidates(candidates).expect("Candidate delete failed");
+    assert_eq!(count, 0, "Deletion must be aborted when candidate file size changed");
+    assert_eq!(reclaimed, 0);
+    assert!(mod_candidate.exists(), "Modified candidate file must be preserved");
+
+    // 4. Revalidation lifecycle test: Candidate replaced before deletion (different content, same size)
+    let rep_candidate = temp_dir.join("rep_after_scan.bin");
+    std::fs::write(&rep_candidate, &pattern_b).unwrap(); // 8192 bytes, different content
+
+    let candidates_rep = vec![
+        DuplicateCandidateItem {
+            target_path: rep_candidate.to_string_lossy().to_string(),
+            reference_path: Some(orig_path.to_string_lossy().to_string()),
+            expected_size: Some(8192),
+        }
+    ];
+    let (reclaimed_rep, count_rep) = delete_duplicate_candidates(candidates_rep).expect("Candidate delete failed");
+    assert_eq!(count_rep, 0, "Deletion must be aborted when candidate content no longer matches reference");
+    assert_eq!(reclaimed_rep, 0);
+    assert!(rep_candidate.exists(), "Replaced candidate file must be preserved");
+
+    // 5. Security & self-deletion guard test: Candidate resolves to same file as reference
+    let self_deletion_candidates = vec![
+        DuplicateCandidateItem {
+            target_path: orig_path.to_string_lossy().to_string(),
+            reference_path: Some(orig_path.to_string_lossy().to_string()),
+            expected_size: Some(8192),
+        }
+    ];
+    let (reclaimed_self, count_self) = delete_duplicate_candidates(self_deletion_candidates).expect("Self-deletion check failed");
+    assert_eq!(count_self, 0, "Self-deletion of reference file must be rejected");
+    assert_eq!(reclaimed_self, 0);
+    assert!(orig_path.exists(), "Reference file must be preserved against self-deletion attempt");
+
+    // 6. Security & protected directory guard test: Protected scope target
+    let protected_candidates = vec![
+        DuplicateCandidateItem {
+            target_path: if cfg!(windows) { r"C:\Windows\System32\kernel32.dll".to_string() } else { "/bin/sh".to_string() },
+            reference_path: Some(orig_path.to_string_lossy().to_string()),
+            expected_size: None,
+        }
+    ];
+    let (reclaimed_prot, count_prot) = delete_duplicate_candidates(protected_candidates).expect("Protected scope check failed");
+    assert_eq!(count_prot, 0, "Protected scope deletion must be rejected");
+    assert_eq!(reclaimed_prot, 0);
+
+    // 7. Valid candidate deletion: dup1.bin matches reference orig.bin
+    let valid_candidates = vec![
+        DuplicateCandidateItem {
+            target_path: dup1_path.to_string_lossy().to_string(),
+            reference_path: Some(orig_path.to_string_lossy().to_string()),
+            expected_size: Some(8192),
+        }
+    ];
+    let (reclaimed_valid, count_valid) = delete_duplicate_candidates(valid_candidates).expect("Valid delete failed");
+    assert_eq!(count_valid, 1, "Valid candidate must be deleted");
+    assert_eq!(reclaimed_valid, 8192);
+    assert!(!dup1_path.exists(), "dup1.bin must be deleted");
+    assert!(orig_path.exists(), "orig.bin reference must be preserved");
+
+    // 8. Test delete_duplicate_files wrapper on dup2.bin
+    let (reclaimed_files, count_files) = delete_duplicate_files(vec![dup2_path.to_string_lossy().to_string()]).expect("Wrapper delete failed");
+    assert_eq!(count_files, 1);
+    assert_eq!(reclaimed_files, 8192);
+    assert!(!dup2_path.exists(), "dup2.bin must be deleted by delete_duplicate_files wrapper");
 
     let _ = std::fs::remove_dir_all(&temp_dir);
     println!("PASSED");

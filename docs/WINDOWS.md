@@ -1,11 +1,7 @@
-# AppTrace Platform Guide: Windows
+# AppTrace Windows Documentation
 
-## Telemetry Mechanisms
-- **Process Lifecycle:** Toolhelp32 API (`CreateToolhelp32Snapshot`) runs unprivileged at 500ms intervals. Optional elevated Kernel ETW tracing tracks process launch and termination events.
-- **Network Sockets:** Win32 IP Helper API (`GetExtendedTcpTable` / `GetExtendedUdpTable`) enumerates active endpoints and attributes them to local process IDs.
-- **Filesystem Activity:** Win32 `ReadDirectoryChangesW` handles directory tree monitoring via asynchronous completion ports.
+Windows documentation has been expanded into dedicated guides:
 
-## Privilege Elevation
-- Standard unprivileged user execution provides baseline polling metrics.
-- Administrator elevation activates kernel tracing sessions.
-- Running the UI as Administrator is prohibited to adhere to least privilege.
+- **Installation:** See [docs/installation/WINDOWS.md](installation/WINDOWS.md) for step-by-step portable setup, SHA-256 checksums, and SmartScreen instructions.
+- **Troubleshooting:** See [docs/installation/TROUBLESHOOTING.md](installation/TROUBLESHOOTING.md) for solutions to common Windows issues.
+- **Architecture & Telemetry:** See [docs/ARCHITECTURE.md](ARCHITECTURE.md) for technical details on Toolhelp32, IP Helper, Win32 SCM, and Registry APIs.

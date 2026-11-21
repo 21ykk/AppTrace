@@ -520,6 +520,12 @@ export const SettingsPage: React.FC = () => {
                   {formatBytes(diagnostics.app_memory_rss_bytes ?? 0)}
                 </span>
               </div>
+              <div className="p-2 rounded bg-[#101113] border border-[#30343A]">
+                <span className="text-[10px] text-[#6E747D] block uppercase">Persistence Errors</span>
+                <span className={`font-bold ${(diagnostics.persistence_failures_count ?? 0) > 0 ? 'text-[#ff5555]' : 'text-[#35B879]'}`}>
+                  {diagnostics.persistence_failures_count ?? 0}
+                </span>
+              </div>
             </div>
           )}
 

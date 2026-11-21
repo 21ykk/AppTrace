@@ -1,11 +1,8 @@
-# AppTrace Installation Guide
+# AppTrace Installation Guides
 
-## System Requirements
-- **Windows:** Windows 10 (Build 17763+) or Windows 11 x64.
-- **Linux:** Ubuntu 22.04 LTS+, Debian 12+, Fedora 39+ (x86_64, Kernel >= 5.15).
+The installation guides have been moved and expanded into dedicated platform guides:
 
-## Running Prebuilt Binaries
-- **Windows:** Run `AppTrace-Setup.exe` or install via `AppTrace.msi`.
-- **Linux (AppImage):** Make executable (`chmod +x AppTrace.AppImage`) and run.
-- **Linux (Debian/Ubuntu):** Install with `sudo dpkg -i apptrace.deb`.
-- **Linux (Fedora):** Install with `sudo rpm -ivh apptrace.rpm`.
+- **Windows Users (Stable):** See [docs/installation/WINDOWS.md](installation/WINDOWS.md) for step-by-step instructions on running the portable release on Windows 10/11 x64, SHA-256 verification, and SmartScreen guidance.
+- **Linux Users (Public Beta):** See [docs/installation/LINUX.md](installation/LINUX.md) for distribution requirements, system libraries, and building from source on Ubuntu and Debian.
+- **Troubleshooting:** See [docs/installation/TROUBLESHOOTING.md](installation/TROUBLESHOOTING.md) for solutions to common issues.
+- **Uninstallation:** See [docs/guides/UNINSTALLATION.md](guides/UNINSTALLATION.md) for instructions on completely removing AppTrace.

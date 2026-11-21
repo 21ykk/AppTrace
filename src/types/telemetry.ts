@@ -69,6 +69,7 @@ export interface SystemDiagnostics {
   app_memory_rss_bytes: number
   active_threads_count?: number
   uptime_seconds: number
+  persistence_failures_count?: number
 }
 
 export interface SystemMetrics {

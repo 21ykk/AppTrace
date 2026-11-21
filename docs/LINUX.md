@@ -1,11 +1,7 @@
-# AppTrace Platform Guide: Linux
+# AppTrace Linux Documentation
 
-## Telemetry Mechanisms
-- **Process Lifecycle:** Baseline parses `/proc` filesystem trees and Netlink process events (`CN_PROC`). Optional eBPF kprobes hook `sched_process_exec` and `sched_process_exit`.
-- **Network Sockets:** Netlink `NETLINK_INET_DIAG` socket diagnostic tables provide socket states and inode-to-PID resolution.
-- **Filesystem Activity:** Linux `inotify` subsystem watches recursive directory hierarchies.
+Linux documentation has been updated to reflect the Public Beta status:
 
-## Kernel Prerequisites for eBPF
-- Linux Kernel version >= 5.15
-- BTF support enabled (`/sys/kernel/btf/vmlinux`)
-- `CAP_BPF` or `CAP_NET_ADMIN` ambient capabilities
+- **Installation & Building (Public Beta):** See [docs/installation/LINUX.md](installation/LINUX.md) for requirements, dependencies, and building from source.
+- **Troubleshooting:** See [docs/installation/TROUBLESHOOTING.md](installation/TROUBLESHOOTING.md) for Linux-specific solutions (WebKit2GTK, Wayland, systemd).
+- **Test Evidence:** See [docs/LINUX_TEST_EVIDENCE.md](LINUX_TEST_EVIDENCE.md) for test results and disposable lab documentation.
